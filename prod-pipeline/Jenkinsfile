@@ -21,6 +21,11 @@ pipeline {
         NEXUS_LOGIN   = 'nexuslogin'
         SONARSERVER   = 'sonarserver'
         SONARSCANNER  = 'sonarscanner'
+        registryCredential = 'ecr:us-east-1:aws-creds'
+        appRegistry = '099706209901.dkr.ecr.us-east-1.amazonaws.com/vprofileappimage'
+        vprofileRegistry = "https://099706209901.dkr.ecr.us-east-1.amazonaws.com/vprofileappimage"
+        cluster = "vproappstaging"
+        service = "vproapp-service-c4spd8mt"
     }
 
     stages {
@@ -93,6 +98,34 @@ pipeline {
                 )
             }
         }
+
+        stage("Build App Image") {
+            steps {
+               script {
+                 dockerImage = docker.build(appRegistry + ":$BUILD_NUMBER", "./docker-files/app/multistage/")
+               }
+            }
+        }
+
+        stage("Upload App Image") {
+            steps {
+                script {
+                    docker.withRegistry(vprofileRegistry, registryCredential) {
+                        dockerImage.push("${BUILD_NUMBER}")
+                        dockerImage.push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to staging ECS') {
+            steps {
+                 withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                   sh 'aws ecs update-service --cluster ${cluster} --service ${service} --force-new-deployment'
+                 }
+            }
+        }
+
     } // End of Stages
 
     post {
