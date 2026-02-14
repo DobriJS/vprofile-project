@@ -76,12 +76,16 @@ pipeline {
 
         stage("Upload Artifact") {
             steps {
+                script {
+                    def SAFE_TIMESTAMP = env.BUILD_TIMESTAMP.replace(':', '-')
+                    env.DEPLOY_VERSION = "${env.BUILD_ID}-${SAFE_TIMESTAMP}"
+                }
                 nexusArtifactUploader(
                     nexusVersion: 'nexus3',
                     protocol: 'http',
                     nexusUrl: "${NEXUSIP}:${NEXUSPORT}",
                     groupId: 'QA',
-                    version: "${env.BUILD_ID}-${env.BUILD_TIMESTAMP}",
+                    version: "${env.DEPLOY_VERSION}"
                     repository: "${RELEASE_REPO}",
                     credentialsId: "${NEXUS_LOGIN}",
                     artifacts: [
