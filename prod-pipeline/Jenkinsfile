@@ -12,7 +12,7 @@ pipeline {
     environment {
         SNAP_REPO     = 'vprofile-snapshot'
         NEXUS_USER    = 'admin'
-        NEXUS_PASS    = 'dobri1989'
+        NEXUS_PASS    =  credentials('nexuspass')
         RELEASE_REPO  = 'vprofile-release'
         CENTRAL_REPO  = 'vpro-maven-central'
         NEXUSIP       = '10.0.1.4'
@@ -43,13 +43,13 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'mvn test'
+                sh 'mvn -s settings.xml test'
             }
         }
 
         stage('Checkstyle Analysis') {
             steps {
-                sh 'mvn checkstyle:checkstyle'
+                sh 'mvn -s settings.xml checkstyle:checkstyle'
             }
         }
 
@@ -79,7 +79,7 @@ pipeline {
             }
         }
 
-        stage("UploadArtifact") {
+        stage("Upload Artifact") {
             steps {
                 nexusArtifactUploader(
                     nexusVersion: 'nexus3',
@@ -118,7 +118,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to staging ECS') {
+        stage('Deploy to production ECS') {
             steps {
                  withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                    sh 'aws ecs update-service --cluster ${cluster} --service ${service} --force-new-deployment'
@@ -126,12 +126,11 @@ pipeline {
             }
         }
 
-    } // End of Stages
+    } 
 
     post {
         always {
             echo 'Slack Notifications.'
-            // Note: COLOR_MAP must be defined globally to work here
             slackSend channel: '#jenkinscicd',
                 color: 'good', 
                 message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
